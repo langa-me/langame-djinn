@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package langame.djinn;
+
+option go_package = "internal/djinn;djinn";
+
+
+message MagnificationRequest {
+  string text = 1;
+};
+message MagnificationResponse {
+  string text = 1;
+  oneof type {
+    Sentiment sentiment_response = 2;
+  }
+
+  message Sentiment {
+    double positive = 1;
+    double negative = 2;
+  }
+};
+
+service ConversationMagnifier {
+  rpc Magnify (stream MagnificationRequest) returns (stream MagnificationResponse);
+};
+  

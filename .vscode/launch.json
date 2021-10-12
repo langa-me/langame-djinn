@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "no-auth",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "cmd/djinn/main.go",
+            "args": [
+                "/Users/louisbeaumont/Documents/langame-djinn/config.yaml",
+                "no-auth"
+            ],
+        },
+        {
+            "name": "auth",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "cmd/djinn/main.go",
+            "args": [
+                "/Users/louisbeaumont/Documents/langame-djinn/config.yaml",
+                "no-auth"
+            ],
+        }
+    ]
+}
