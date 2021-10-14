@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
+	MODEL = "siebert/sentiment-roberta-large-english"
+	API_URL = fmt.Sprintf("https://api-inference.huggingface.co/models/%s", MODEL)
 )
 
 func Query(payload string) (*djinn.MagnificationResponse_Sentiment, error) {

@@ -11,7 +11,7 @@ build:
 	go build -o bin/djinn cmd/djinn/main.go
 
 run:
-	go run cmd/djinn/main.go
+	go run cmd/djinn/main.go config.yaml
 
 docker:
 	gcloud builds submit --tag IMAGE_URL

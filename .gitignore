@@ -2,3 +2,5 @@ service.yaml
 config.yaml
 # Service accounts
 *svc*
+# Binary
+bin

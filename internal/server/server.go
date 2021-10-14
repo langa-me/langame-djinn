@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"io"
-	"log"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
@@ -39,12 +38,10 @@ func (s *server) Magnify(stream api.ConversationMagnifier_MagnifyServer) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("Received message: %v", in.Text)
 		magnifiedText, err := service.Query(in.Text)
 		if err != nil {
 			return err
 		}
-		log.Printf("Magnified message: %v", magnifiedText)
 		if err := stream.Send(&api.MagnificationResponse{
 			Text: in.Text,
 			Type: &api.MagnificationResponse_SentimentResponse{
@@ -68,7 +65,6 @@ func parseToken(ctx context.Context, token string) (*auth.Token, error) {
 		return nil, err
 	}
 
-	log.Printf("Verified ID token: %v\n", token)
 	return nt, nil
 }
 
@@ -83,7 +79,7 @@ func AuthFunc(ctx context.Context) (context.Context, error) {
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid auth token: %v", err)
 	}
-	grpc_ctxtags.Extract(ctx).Set("auth.sub", tokenInfo.UID)
+	grpc_ctxtags.Extract(ctx).Set("auth.uid", tokenInfo.UID)
 
 	newCtx := context.WithValue(ctx, AuthToken("tokenInfo"), tokenInfo)
 

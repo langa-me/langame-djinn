@@ -8,7 +8,12 @@ import (
 	"os"
 
 	firebase "firebase.google.com/go"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"go.uber.org/zap"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/langa-me/langame-djinn/internal/config"
 	"github.com/langa-me/langame-djinn/internal/djinn"
 	"github.com/langa-me/langame-djinn/internal/server"
@@ -29,8 +34,18 @@ func main() {
 	grpcEndpoint := fmt.Sprintf(":%s", port)
 	log.Printf("gRPC endpoint [%s]", grpcEndpoint)
 
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("Failed to init logger: %v", err)
+	}
+	defer logger.Sync() // flushes buffer, if any
+
 	grpcServer := grpc.NewServer(
-		grpc.StreamInterceptor(grpc_auth.StreamServerInterceptor(server.AuthFunc)),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_prometheus.StreamServerInterceptor,
+			grpc_ctxtags.StreamServerInterceptor(),
+			grpc_zap.StreamServerInterceptor(logger),
+			grpc_auth.StreamServerInterceptor(server.AuthFunc))),
 	)
 	// Override the default gRPC server with our unauthenticated server
 	if len(os.Args) > 2 && os.Args[2] == "no-auth" {
@@ -38,7 +53,9 @@ func main() {
 		log.Printf("Authentication is disabled")
 	}
 	ctx := context.Background()
-	fb, err := firebase.NewApp(ctx, nil)
+	fb, err := firebase.NewApp(ctx, &firebase.Config{
+		ProjectID: "langame-dev",
+	})
 	server.App = fb
 	if err != nil {
 		panic(fmt.Sprintf("Failed to init firebase: %v", err))
