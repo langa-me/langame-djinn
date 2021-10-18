@@ -2,26 +2,33 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
-	"net"
+	"net/http"
 	"os"
 
 	firebase "firebase.google.com/go"
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	"github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	"go.uber.org/zap"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	"github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/langa-me/langame-djinn/internal/config"
 	"github.com/langa-me/langame-djinn/internal/djinn"
 	"github.com/langa-me/langame-djinn/internal/server"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	err := config.InitConfig(os.Args[1])
+	var configPath = flag.String("config_path", "config.yaml", "Path to the configuration file")
+	var disableAuth = flag.Bool("no_auth", false, "Whether to disable authentication")
+	flag.Parse()
+
+	log.Printf("Loading config at path %s", *configPath)
+	err := config.InitConfig(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to init config: %v", err)
 	}
@@ -45,10 +52,17 @@ func main() {
 			grpc_prometheus.StreamServerInterceptor,
 			grpc_ctxtags.StreamServerInterceptor(),
 			grpc_zap.StreamServerInterceptor(logger),
-			grpc_auth.StreamServerInterceptor(server.AuthFunc))),
+			grpc_auth.StreamServerInterceptor(server.AuthFunc)),
+		),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_prometheus.UnaryServerInterceptor,
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_zap.UnaryServerInterceptor(logger),
+			grpc_auth.UnaryServerInterceptor(server.AuthFunc)),
+		),
 	)
 	// Override the default gRPC server with our unauthenticated server
-	if len(os.Args) > 2 && os.Args[2] == "no-auth" {
+	if disableAuth != nil && *disableAuth {
 		grpcServer = grpc.NewServer()
 		log.Printf("Authentication is disabled")
 	}
@@ -62,10 +76,13 @@ func main() {
 	}
 	djinn.RegisterConversationMagnifierServer(grpcServer, server.NewServer())
 
-	listen, err := net.Listen("tcp", grpcEndpoint)
-	if err != nil {
-		log.Fatal(err)
+	wrappedGrpc := grpcweb.WrapServer(grpcServer)
+	if err := http.ListenAndServe(":"+port, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // The CORS header to make it work also on our custom domain in the GCP environment
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		wrappedGrpc.ServeHTTP(w, req) // gRPC Web server handling the request
+	})); err != nil {
+		panic(err)
 	}
-	log.Printf("Starting: gRPC Listener [%s]\n", grpcEndpoint)
-	log.Fatal(grpcServer.Serve(listen))
 }

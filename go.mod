@@ -7,6 +7,7 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/improbable-eng/grpc-web v0.14.1
 	github.com/prometheus/client_golang v1.11.0 // indirect
 	go.uber.org/zap v1.19.1
 	google.golang.org/api v0.58.0
